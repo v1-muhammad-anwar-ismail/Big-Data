@@ -1,0 +1,3 @@
+Hadoop HDFS DataNode MapReduce Big Data
+Hadoop stores data as blocks and replicas
+Hadoop MapReduce processes data stored in HDFS

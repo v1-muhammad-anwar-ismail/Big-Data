@@ -1,0 +1,11 @@
+Nama,Nilai
+Andi,85
+Budi,90
+Citra,88
+Dina,92
+Eka,87
+Shobrun,99
+Mufid,90
+Ramzi,95
+Afen,90
+Mail,80

@@ -1,0 +1,46 @@
+services:
+  namenode:
+    image: apache/hadoop:3.4.3
+    container_name: namenode
+    hostname: namenode
+    user: root
+    command: >
+      bash -c "
+      mkdir -p /tmp/hadoop-data/namenode &&
+      chown -R hadoop:hadoop /tmp/hadoop-data/namenode &&
+      if [ ! -d /tmp/hadoop-data/namenode/current ]; then
+        su -s /bin/bash hadoop -c '/opt/hadoop/bin/hdfs namenode -format -force -nonInteractive';
+      fi &&
+      su -s /bin/bash hadoop -c '/opt/hadoop/bin/hdfs namenode'
+      "
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    volumes:
+      - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - namenode-data:/tmp/hadoop-data
+
+  datanode:
+    image: apache/hadoop:3.4.3
+    container_name: datanode
+    hostname: datanode
+    user: root
+    command: >
+      bash -c "
+      mkdir -p /tmp/hadoop-data/datanode &&
+      chown -R hadoop:hadoop /tmp/hadoop-data/datanode &&
+      su -s /bin/bash hadoop -c '/opt/hadoop/bin/hdfs datanode'
+      "
+    ports:
+      - "9864:9864"
+    volumes:
+      - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - datanode-data:/tmp/hadoop-data
+    depends_on:
+      - namenode
+
+volumes:
+  namenode-data:
+  datanode-data:

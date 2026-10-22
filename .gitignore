@@ -1,0 +1,10 @@
+# Temporary scratch files
+scratch_analysis/
+
+# Microsoft Office temporary lock files
+~$*
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
