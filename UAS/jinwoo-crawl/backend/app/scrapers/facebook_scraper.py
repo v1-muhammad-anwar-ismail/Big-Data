@@ -2,55 +2,61 @@ import hashlib
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 
+# Safe import from facebook_page_scraper (singular)
+try:
+    from facebook_page_scraper import FacebookPageScraper
+except ImportError:
+    FacebookPageScraper = None
+
 def scrape_facebook_pages(page_name: str = "detikcom", keyword: str = "karhutla", max_posts: int = 10) -> List[Dict[str, Any]]:
     """Scraping postingan Fanpage Berita Facebook publik tanpa login"""
     results = []
     
-    # Try using facebook_pages_scraper
-    try:
-        from facebook_pages_scraper import Facebook_scraper
-        # Using a low post count for fast response
-        scraper = Facebook_scraper(page_name=page_name, posts_count=min(max_posts, 5), browser="firefox", proxy=None)
-        json_data = scraper.scrap_to_json()
-        
-        if json_data:
-            import json
-            posts = json.loads(json_data)
-            for post in posts:
-                content = post.get("text", "") or post.get("content", "")
-                post_id = post.get("post_id", "") or hashlib.md5(content.encode()).hexdigest()[:12]
-                post_url = post.get("post_url", f"https://www.facebook.com/{page_name}/posts/{post_id}")
-                likes = int(post.get("likes", 0) or 0)
-                shares = int(post.get("shares", 0) or 0)
-                comments = int(post.get("comments", 0) or 0)
-                time_str = post.get("time", "")
-                
-                doc_id = hashlib.md5(f"fb_{page_name}_{post_id}".encode()).hexdigest()
-                cat = "Disaster" if any(k in content.lower() for k in ["hutan", "karhutla", "banjir"]) else "General"
+    # Try using FacebookPageScraper if available
+    if FacebookPageScraper is not None:
+        try:
+            # Using low post count for fast response
+            scraper = FacebookPageScraper(page_name=page_name, posts_count=min(max_posts, 5), browser="firefox", proxy=None)
+            json_data = scraper.scrap_to_json()
+            
+            if json_data:
+                import json
+                posts = json.loads(json_data)
+                for post in posts:
+                    content = post.get("text", "") or post.get("content", "")
+                    post_id = post.get("post_id", "") or hashlib.md5(content.encode()).hexdigest()[:12]
+                    post_url = post.get("post_url", f"https://www.facebook.com/{page_name}/posts/{post_id}")
+                    likes = int(post.get("likes", 0) or 0)
+                    shares = int(post.get("shares", 0) or 0)
+                    comments = int(post.get("comments", 0) or 0)
+                    time_str = post.get("time", "")
+                    
+                    doc_id = hashlib.md5(f"fb_{page_name}_{post_id}".encode()).hexdigest()
+                    cat = "Disaster" if any(k in content.lower() for k in ["hutan", "karhutla", "banjir"]) else "General"
 
-                results.append({
-                    "id": doc_id,
-                    "tool_source": "facebook_pages",
-                    "platform": "Facebook",
-                    "keyword": keyword,
-                    "category": cat,
-                    "title": f"Facebook Post [{page_name}]: {content[:70]}...",
-                    "content": content,
-                    "url": post_url,
-                    "author_or_source": f"Facebook Page: {page_name}",
-                    "published_at": time_str or datetime.now(timezone.utc).isoformat(),
-                    "published_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    "metrics": {
-                        "views": likes * 15,
-                        "likes": likes,
-                        "comments": comments,
-                        "shares": shares,
-                        "sentiment_tone": -1.2 if cat == "Disaster" else 0.2
-                    },
-                    "raw_data": post
-                })
-    except Exception as e:
-        print(f"[Facebook Scraper] Error scraping page '{page_name}': {e}")
+                    results.append({
+                        "id": doc_id,
+                        "tool_source": "facebook_pages",
+                        "platform": "Facebook",
+                        "keyword": keyword,
+                        "category": cat,
+                        "title": f"Facebook Post [{page_name}]: {content[:70]}...",
+                        "content": content,
+                        "url": post_url,
+                        "author_or_source": f"Facebook Page: {page_name}",
+                        "published_at": time_str or datetime.now(timezone.utc).isoformat(),
+                        "published_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                        "metrics": {
+                            "views": likes * 15,
+                            "likes": likes,
+                            "comments": comments,
+                            "shares": shares,
+                            "sentiment_tone": -1.2 if cat == "Disaster" else 0.2
+                        },
+                        "raw_data": post
+                    })
+        except Exception as e:
+            print(f"[Facebook Scraper] Error scraping page '{page_name}': {e}")
 
     # Fallback simulation of public Facebook news fanpages
     if not results:

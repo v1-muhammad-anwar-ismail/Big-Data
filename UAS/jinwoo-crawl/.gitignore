@@ -1,11 +1,44 @@
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
+# =====================================================================
+# JinwooCrawl Git Ignore Rules
+# =====================================================================
 
-# Build outputs
+# Environment variables & Sensitive Credentials (DILARANG TERPUSH)
+.env
+.env.*
+!.env.example
+!.env.server
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Node.js & Frontend Build Outputs
+node_modules/
 frontend/dist/
 frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Temporary and log files
+# Database & Runtime Data
+*.sqlite
+*.sqlite3
+*.db
 *.log
+
+# OS & Editor generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

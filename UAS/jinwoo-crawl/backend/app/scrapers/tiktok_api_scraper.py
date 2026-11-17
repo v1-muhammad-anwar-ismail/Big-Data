@@ -1,4 +1,6 @@
 import hashlib
+import asyncio
+import concurrent.futures
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from app.config import settings
@@ -10,11 +12,9 @@ def scrape_tiktok_api(keyword: str = "karhutla", max_records: int = 10) -> List[
     
     try:
         from TikTokApi import TikTokApi
-        import asyncio
 
         async def fetch_tiktok():
             nonlocal results
-            # Initialize with custom session key if provided
             async with TikTokApi() as api:
                 if session_key:
                     print("[TikTokApi] Creating sessions with custom session key from .env...")
@@ -60,13 +60,16 @@ def scrape_tiktok_api(keyword: str = "karhutla", max_records: int = 10) -> List[
                     if count >= max_records:
                         break
 
-        # Run async loop safely
+        # Run async loop safely without nest_asyncio dependency
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                import nest_asyncio
-                nest_asyncio.apply()
-            loop.run_until_complete(fetch_tiktok())
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pool.submit(asyncio.run, fetch_tiktok()).result()
+            else:
+                loop.run_until_complete(fetch_tiktok())
+        except RuntimeError:
+            asyncio.run(fetch_tiktok())
         except Exception as async_err:
             print(f"[TikTokApi] Async execution error: {async_err}")
 
@@ -76,7 +79,6 @@ def scrape_tiktok_api(keyword: str = "karhutla", max_records: int = 10) -> List[
     # Fallback simulation if Playwright headless browser is not installed or captcha triggered
     if not results:
         now = datetime.now(timezone.utc)
-        print(f"[TikTokApi] Using robust API data structure fallback for #{keyword}...")
         sample_users = ["narasi_tv_official", "metrotvnews_tiktok", "kumparan_com", "tribunnews_official"]
         posts = [
             ("Laporan investigasi: Di balik kabut tebal {} yang tak kunjung reda di pulau Sumatera dan Kalimantan.", 64000, 5200, 480, 210),
