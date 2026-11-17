@@ -12,8 +12,8 @@ def health_check():
         "environment": settings.APP_ENV,
         "backend_port": settings.PORT,
         "frontend_port": 5001,
-        "backend_domain": "scrape.jinwoostream.lol",
-        "frontend_domain": "crawl.jinwoostream.lol",
+        "backend_domain": settings.BACKEND_DOMAIN.replace("https://", "").replace("http://", "").rstrip("/"),
+        "frontend_domain": settings.FRONTEND_DOMAIN.replace("https://", "").replace("http://", "").rstrip("/"),
         "cors_origins": settings.CORS_ORIGINS,
         "database": db_status
     }

@@ -6,7 +6,6 @@
 .env
 .env.*
 !.env.example
-!.env.server
 
 # Python & Virtual Environments
 __pycache__/
@@ -32,6 +31,14 @@ pnpm-debug.log*
 *.sqlite3
 *.db
 *.log
+*.csv
+*.jsonl
+.pw-tmp/
+.pw-browsers/
+.tmp-install/
+.pm2/
+.cache/
+.pytest_cache/
 
 # OS & Editor generated files
 .DS_Store

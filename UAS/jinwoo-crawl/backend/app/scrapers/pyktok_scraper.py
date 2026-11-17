@@ -1,81 +1,108 @@
-import hashlib
-from datetime import datetime, timezone
-from typing import List, Dict, Any
+"""Real academic TikTok scraper (Universal Rehydration JSON + Playwright session discovery, zero heavy bloat)."""
+import json
+from typing import Any, Dict, List, Optional
+import requests
+from bs4 import BeautifulSoup
+from app.config import settings
+from app.scrapers._helpers import (
+    UA,
+    fetch_tiktok_search_via_playwright,
+    normalize_tiktok_item,
+    run_coro_sync,
+)
 
-def scrape_pyktok(keyword: str = "karhutla", video_urls: List[str] = None, max_records: int = 10) -> List[Dict[str, Any]]:
-    """Menggunakan pyktok untuk mengekstrak metadata mendalam video TikTok untuk analisis akademik"""
-    results = []
-    
-    # If video URLs provided, try pyktok native extraction
-    if video_urls:
+
+def _fetch_tiktok_universal_json(url: str, cookies: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
+    """Lightweight replacement for pyktok.alt_get_tiktok_json without streamlit/pandas/browser_cookie3 bloat."""
+    try:
+        r = requests.get(
+            url,
+            headers={"User-Agent": UA, "Referer": "https://www.tiktok.com/"},
+            cookies=cookies or None,
+            timeout=(5, 10),
+        )
+        if r.status_code != 200:
+            return None
+        soup = BeautifulSoup(r.text, "html.parser")
+        script_el = soup.find("script", attrs={"id": "__UNIVERSAL_DATA_FOR_REHYDRATION__"})
+        if script_el and script_el.string:
+            return json.loads(script_el.string)
+    except Exception:
+        pass
+    return None
+
+
+def scrape_pyktok(
+    keyword: str = "karhutla",
+    video_urls: List[str] = None,
+    max_records: int = 10,
+    year_range: int = 5,
+) -> List[Dict[str, Any]]:
+    clean_kw = keyword.replace("#", "").strip()
+    candidates: List[Dict[str, Any]] = []
+    target_urls: List[str] = list(video_urls or [])
+    session_key = settings.TIKTOK_SESSION_KEY.strip()
+    ms_token = getattr(settings, "TIKTOK_MS_TOKEN", "").strip()
+
+    if not target_urls and clean_kw:
+        candidates = run_coro_sync(
+            fetch_tiktok_search_via_playwright(
+                queries=[f"{clean_kw} opini", f"{clean_kw} update", f"{clean_kw} analisis", f"{clean_kw} fakta"],
+                session_key=session_key,
+                ms_token=ms_token,
+                max_records=max_records,
+                year_range=year_range,
+            )
+        )
+        for it in candidates:
+            author = (it.get("author") or {}).get("uniqueId")
+            vid = it.get("id")
+            if author and vid:
+                target_urls.append(f"https://www.tiktok.com/@{author}/video/{vid}")
+
+    candidate_by_id = {str(it.get("id")): it for it in candidates if it.get("id")}
+    req_cookies: Dict[str, str] = {}
+    if session_key:
+        req_cookies["sessionid"] = session_key
+    if ms_token:
+        req_cookies["msToken"] = ms_token
+
+    results: List[Dict[str, Any]] = []
+    seen_ids: set = set()
+
+    for url in target_urls[:max_records]:
+        enriched_item = None
         try:
-            import pyktok as pk
-            for url in video_urls[:max_records]:
-                meta = pk.get_tiktok_json(url)
-                if meta:
-                    item = meta.get("itemInfo", {}).get("itemStruct", {})
-                    vid_id = item.get("id", "vid")
-                    desc = item.get("desc", "")
-                    stats = item.get("stats", {})
-                    author = item.get("author", {}).get("uniqueId", "creator")
-                    create_time = item.get("createTime", 0)
-                    dt = datetime.fromtimestamp(int(create_time), tz=timezone.utc) if create_time else datetime.now(timezone.utc)
-                    doc_id = hashlib.md5(f"pyktok_{vid_id}".encode()).hexdigest()
-
-                    results.append({
-                        "id": doc_id,
-                        "tool_source": "pyktok",
-                        "platform": "TikTok",
-                        "keyword": keyword,
-                        "category": "Disaster" if "hutan" in desc.lower() or "karhutla" in desc.lower() else "Social",
-                        "title": f"Pyktok Metadata @{author}: {desc[:70]}",
-                        "content": desc,
-                        "url": url,
-                        "author_or_source": f"@{author}",
-                        "published_at": dt.isoformat(),
-                        "published_date": dt.strftime("%Y-%m-%d"),
-                        "metrics": {
-                            "views": int(stats.get("playCount", 0)),
-                            "likes": int(stats.get("diggCount", 0)),
-                            "comments": int(stats.get("commentCount", 0)),
-                            "shares": int(stats.get("shareCount", 0)),
-                            "sentiment_tone": 0.0
-                        },
-                        "raw_data": item
-                    })
+            meta = _fetch_tiktok_universal_json(url, cookies=req_cookies)
+            if isinstance(meta, dict):
+                scope = meta.get("__DEFAULT_SCOPE__", {})
+                struct = (
+                    scope.get("webapp.video-detail", {}).get("itemInfo", {}).get("itemStruct")
+                    or meta.get("itemInfo", {}).get("itemStruct")
+                )
+                if isinstance(struct, dict) and struct.get("id"):
+                    enriched_item = struct
         except Exception as e:
-            print(f"[Pyktok] Error during direct extraction: {e}")
+            print(f"[Pyktok] metadata note for {url}: {e}", flush=True)
 
-    # Fallback / General search metadata generation
-    if not results:
-        now = datetime.now(timezone.utc)
-        sample_creators = ["kompas_news", "infomitigasi_id", "suararakyat_update", "detikcom_tiktok"]
-        for i in range(min(max_records, 5)):
-            creator = sample_creators[i % len(sample_creators)]
-            vid_id = f"74189012389100{i}"
-            desc = f"Riset pyktok: Analisis keterlibatan publik pada topik {keyword} di platform TikTok #akademik #data"
-            doc_id = hashlib.md5(f"pyktok_{vid_id}_{keyword}".encode()).hexdigest()
-            
-            results.append({
-                "id": doc_id,
-                "tool_source": "pyktok",
-                "platform": "TikTok",
-                "keyword": keyword,
-                "category": "Disaster" if "karhutla" in keyword.lower() else "Social",
-                "title": f"Pyktok Dataset @{creator} #{keyword}",
-                "content": desc,
-                "url": f"https://www.tiktok.com/@{creator}/video/{vid_id}",
-                "author_or_source": f"@{creator}",
-                "published_at": now.isoformat(),
-                "published_date": now.strftime("%Y-%m-%d"),
-                "metrics": {
-                    "views": (i + 1) * 35000,
-                    "likes": (i + 1) * 2800,
-                    "comments": (i + 1) * 310,
-                    "shares": (i + 1) * 85,
-                    "sentiment_tone": -0.8
-                },
-                "raw_data": {"extracted_by": "pyktok_academic_engine"}
-            })
+        if not enriched_item:
+            vid_from_url = url.rstrip("/").split("/")[-1].split("?")[0]
+            enriched_item = candidate_by_id.get(vid_from_url)
+
+        if not enriched_item or str(enriched_item.get("id")) in seen_ids:
+            continue
+        seen_ids.add(str(enriched_item["id"]))
+
+        doc = normalize_tiktok_item(
+            enriched_item,
+            tool_source="pyktok",
+            keyword=keyword,
+            title_prefix="Pyktok",
+        )
+        stats = enriched_item.get("stats") or {}
+        if stats.get("collectCount") is not None:
+            doc["raw_data"]["collect_count"] = stats.get("collectCount")
+        doc["raw_data"]["extracted_by"] = "tiktok_rehydration_json"
+        results.append(doc)
 
     return results

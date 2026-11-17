@@ -26,6 +26,7 @@ export interface ScrapedItem {
   title: string;
   content: string;
   url: string;
+  thumbnail_url?: string;
   author_or_source: string;
   published_at: string;
   published_date: string;

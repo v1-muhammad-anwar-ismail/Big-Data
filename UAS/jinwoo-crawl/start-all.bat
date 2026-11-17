@@ -4,7 +4,7 @@ cd /d "%~dp0"
 echo =====================================================================
 echo  JinwooCrawl - Big Data Intelligence Platform
 echo  Backend:  http://localhost:5002  -^> scrape.jinwoostream.lol
-echo  Frontend: http://localhost:5001  -^> crawal.jinwoostream.lol
+echo  Frontend: http://localhost:5001  -^> crawl.jinwoostream.lol
 echo =====================================================================
 
 start "JinwooCrawl Backend" cmd /c "start-backend.bat"

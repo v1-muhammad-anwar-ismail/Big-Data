@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.config import settings
 from app.routes import scraper_routes, data_routes, status_routes
 
@@ -8,6 +9,8 @@ app = FastAPI(
     description="Backend Scraper & Data Ingestion Engine for Big Data UAS Final Project (Issue Attention Cycle)",
     version="1.0.0"
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configure CORS
 origins = settings.CORS_ORIGINS or ["*"]

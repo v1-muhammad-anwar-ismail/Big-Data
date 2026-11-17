@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="jinwooGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="50%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#991b1b" />
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fca5a5" />
+      <stop offset="100%" stop-color="#7f1d1d" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer Rounded Shield -->
+  <rect x="3" y="3" width="42" height="42" rx="12" fill="#0b0f19" stroke="url(#strokeGrad)" stroke-width="2" />
+  
+  <!-- Data Crawler Nodes / Radar Sweep Arcs -->
+  <path d="M12 14 C 18 10, 30 10, 36 14" stroke="#ef4444" stroke-width="2" stroke-linecap="round" opacity="0.4" />
+  <path d="M10 20 C 18 16, 30 16, 38 20" stroke="#ef4444" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+  
+  <!-- Stylized Geometric "J" Crawler Antenna -->
+  <path d="M26 12 V30 C26 34.5 22.5 37 18 36 C14 35 13 32 13 32" stroke="url(#jinwooGrad)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Crawler Radar Signal Ping Point -->
+  <circle cx="26" cy="12" r="3.5" fill="#ffffff" />
+  <circle cx="34" cy="28" r="2.5" fill="#ef4444" />
+  <line x1="26" y1="26" x2="34" y2="28" stroke="#ef4444" stroke-width="1.8" stroke-dasharray="2 2" />
+</svg>

@@ -1,118 +1,96 @@
-import hashlib
+"""Real TikTok scraper powered by davidteather/TikTok-Api + Playwright session fallback (zero mock data)."""
 import asyncio
-import concurrent.futures
+import os
+import re
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 from app.config import settings
+from app.scrapers._helpers import (
+    fetch_tiktok_search_via_playwright,
+    is_within_years,
+    normalize_tiktok_item,
+    run_coro_sync,
+)
 
-def scrape_tiktok_api(keyword: str = "karhutla", max_records: int = 10) -> List[Dict[str, Any]]:
-    """Scraping TikTok via library davidteather/TikTok-Api dengan dukungan session key dinamis"""
-    results = []
+
+def scrape_tiktok_api(keyword: str = "karhutla", max_records: int = 10, year_range: int = 5) -> List[Dict[str, Any]]:
+    clean_kw = re.sub(r"[#@]", "", keyword or "").strip()
+    if not clean_kw:
+        return []
+
     session_key = settings.TIKTOK_SESSION_KEY.strip()
-    
-    try:
+    ms_token = getattr(settings, "TIKTOK_MS_TOKEN", "").strip()
+    collected: Dict[str, Dict[str, Any]] = {}
+
+    async def _try_native_ttapi() -> None:
         from TikTokApi import TikTokApi
 
-        async def fetch_tiktok():
-            nonlocal results
-            async with TikTokApi() as api:
-                if session_key:
-                    print("[TikTokApi] Creating sessions with custom session key from .env...")
-                    await api.create_sessions(ms_tokens=[session_key], num_users=1, headless=True)
-                else:
-                    print("[TikTokApi] No session key in .env, attempting default session...")
-                    await api.create_sessions(num_users=1, headless=True)
-
-                tag = api.hashtag(name=keyword.replace("#", ""))
-                count = 0
-                async for video in tag.videos(count=min(max_records, 15)):
-                    v_dict = video.as_dict
-                    vid_id = v_dict.get("id", "")
-                    desc = v_dict.get("desc", "")
-                    author = v_dict.get("author", {}).get("uniqueId", "tiktok_user")
-                    stats = v_dict.get("stats", {})
-                    create_time = v_dict.get("createTime", 0)
-                    dt = datetime.fromtimestamp(int(create_time), tz=timezone.utc) if create_time else datetime.now(timezone.utc)
-                    doc_id = hashlib.md5(f"tt_api_{vid_id}".encode()).hexdigest()
-
-                    results.append({
-                        "id": doc_id,
-                        "tool_source": "tiktok_api",
-                        "platform": "TikTok",
-                        "keyword": keyword,
-                        "category": "Disaster" if "hutan" in desc.lower() or "karhutla" in desc.lower() else "Social",
-                        "title": f"TikTok API @{author}: {desc[:70]}",
-                        "content": desc,
-                        "url": f"https://www.tiktok.com/@{author}/video/{vid_id}",
-                        "author_or_source": f"@{author}",
-                        "published_at": dt.isoformat(),
-                        "published_date": dt.strftime("%Y-%m-%d"),
-                        "metrics": {
-                            "views": int(stats.get("playCount", 0)),
-                            "likes": int(stats.get("diggCount", 0)),
-                            "comments": int(stats.get("commentCount", 0)),
-                            "shares": int(stats.get("shareCount", 0)),
-                            "sentiment_tone": 0.0
-                        },
-                        "raw_data": {"id": vid_id, "stats": stats}
-                    })
-                    count += 1
-                    if count >= max_records:
+        slug = re.sub(r"[^a-zA-Z0-9_]", "", clean_kw)
+        if not slug:
+            return
+        async with TikTokApi() as api:
+            try:
+                cookies = {"sessionid": session_key} if session_key else None
+                browser_args = ["--disable-blink-features=AutomationControlled"]
+                if os.name != "nt":
+                    browser_args.extend(["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+                await asyncio.wait_for(
+                    api.create_sessions(
+                        num_sessions=1,
+                        headless=True,
+                        starting_url="https://www.tiktok.com/404",
+                        suppress_resource_load_types=["image", "media", "font", "stylesheet"],
+                        override_browser_args=browser_args,
+                        ms_tokens=[ms_token] if ms_token else None,
+                        cookies=[cookies] if cookies else None,
+                        timeout=10000,
+                        sleep_after=1,
+                        browser="chromium",
+                    ),
+                    timeout=14.0,
+                )
+                async for video in api.hashtag(name=slug).videos(count=min(max_records, 25)):
+                    d = video.as_dict
+                    if isinstance(d, dict) and d.get("id"):
+                        collected[str(d["id"])] = d
+                    if len(collected) >= max_records:
                         break
+            finally:
+                try:
+                    await api.close_sessions()
+                except Exception:
+                    pass
 
-        # Run async loop safely without nest_asyncio dependency
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    pool.submit(asyncio.run, fetch_tiktok()).result()
-            else:
-                loop.run_until_complete(fetch_tiktok())
-        except RuntimeError:
-            asyncio.run(fetch_tiktok())
-        except Exception as async_err:
-            print(f"[TikTokApi] Async execution error: {async_err}")
-
+    try:
+        run_coro_sync(_try_native_ttapi())
     except Exception as e:
-        print(f"[TikTokApi] Library initialization error: {e}")
+        print(f"[TikTokApi] Hashtag API skipped/blocked ({type(e).__name__}), using Playwright fallback...", flush=True)
 
-    # Fallback simulation if Playwright headless browser is not installed or captcha triggered
-    if not results:
-        now = datetime.now(timezone.utc)
-        sample_users = ["narasi_tv_official", "metrotvnews_tiktok", "kumparan_com", "tribunnews_official"]
-        posts = [
-            ("Laporan investigasi: Di balik kabut tebal {} yang tak kunjung reda di pulau Sumatera dan Kalimantan.", 64000, 5200, 480, 210),
-            ("Viral di TikTok: Detik-detik satwa liar berlarian menghindari kobaran api {}.", 128000, 14500, 1850, 920),
-            ("Edukasi sains: Fenomena el nino dan keterkaitannya dengan intensitas lonjakan titik api {}.", 43000, 3100, 290, 140),
-            ("Rangkuman suara netizen: Kritik terhadap penegakan hukum bagi korporasi pembakar {}.", 89000, 7800, 940, 450)
-        ]
-        
-        for i, (text_tmpl, views, likes, comments, shares) in enumerate(posts[:max_records]):
-            desc = text_tmpl.format(keyword)
-            u = sample_users[i % len(sample_users)]
-            vid_id = f"74291823901928{i}"
-            doc_id = hashlib.md5(f"tt_api_fb_{vid_id}_{keyword}".encode()).hexdigest()
-            
-            results.append({
-                "id": doc_id,
-                "tool_source": "tiktok_api",
-                "platform": "TikTok",
-                "keyword": keyword,
-                "category": "Disaster" if "karhutla" in keyword.lower() or "kobaran api" in desc else "Social",
-                "title": f"TikTok API @{u}: {desc[:65]}...",
-                "content": desc,
-                "url": f"https://www.tiktok.com/@{u}/video/{vid_id}",
-                "author_or_source": f"@{u}",
-                "published_at": now.isoformat(),
-                "published_date": now.strftime("%Y-%m-%d"),
-                "metrics": {
-                    "views": views,
-                    "likes": likes,
-                    "comments": comments,
-                    "shares": shares,
-                    "sentiment_tone": -2.4 if "satwa liar" in desc or "kabut tebal" in desc else -0.5
-                },
-                "raw_data": {"video_id": vid_id, "mode": "davidteather_tiktokapi_fallback"}
-            })
+    # Real Playwright search fallback (captures real search/tag payloads, never mock data)
+    if len(collected) < max_records:
+        try:
+            raw_items = run_coro_sync(
+                fetch_tiktok_search_via_playwright(
+                    queries=[f"{clean_kw} terbaru", f"{clean_kw} fakta", f"{clean_kw} viral"],
+                    session_key=session_key,
+                    ms_token=ms_token,
+                    max_records=max_records - len(collected),
+                    year_range=year_range,
+                )
+            )
+            for it in raw_items:
+                if it.get("id"):
+                    collected[str(it["id"])] = it
+        except Exception as e:
+            print(f"[TikTokApi] Playwright fallback note: {e}", flush=True)
 
+    results: List[Dict[str, Any]] = []
+    for it in collected.values():
+        ctime = int(it.get("createTime") or 0)
+        dt = datetime.fromtimestamp(ctime, tz=timezone.utc) if ctime else datetime.now(timezone.utc)
+        if not is_within_years(dt, year_range):
+            continue
+        results.append(normalize_tiktok_item(it, tool_source="tiktok_api", keyword=keyword, title_prefix="TikTok API"))
+        if len(results) >= max_records:
+            break
     return results
