@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+python-dotenv>=1.0.1
+pymongo>=4.8.0
+requests>=2.32.0
+httpx>=0.27.0
+beautifulsoup4>=4.12.0
+gdeltdoc>=1.12.0
+instaloader>=4.12.0
+facebook-pages-scraper>=0.0.9
+TikTokApi>=7.3.0
+pyktok>=0.0.30
+google-api-python-client>=2.140.0
