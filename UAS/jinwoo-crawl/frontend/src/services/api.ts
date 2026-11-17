@@ -1,7 +1,7 @@
 import { DashboardStats, ScrapedItem, ScraperTool, SystemHealth } from '../types';
 
 // Dynamic API Base URL resolution:
-// If accessed via production domain 'crawal.jinwoostream.lol', point to 'https://scrape.jinwoostream.lol'
+// If accessed via production domain 'crawl.jinwoostream.lol', point to 'https://scrape.jinwoostream.lol'
 // If local, point to 'http://localhost:5002'
 export const getApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {

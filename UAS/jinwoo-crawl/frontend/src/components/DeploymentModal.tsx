@@ -17,7 +17,7 @@ APP_NAME=JinwooCrawl
 APP_ENV=local
 PORT=5002
 HOST=0.0.0.0
-CORS_ORIGINS=http://localhost:5001,http://127.0.0.1:5001,https://crawal.jinwoostream.lol
+CORS_ORIGINS=http://localhost:5001,http://127.0.0.1:5001,https://crawl.jinwoostream.lol
 
 MONGODB_URI=mongodb://localhost:27017/
 MONGODB_DB_NAME=jinwoo-crawl
@@ -36,7 +36,7 @@ APP_NAME=JinwooCrawl
 APP_ENV=production
 PORT=5002
 HOST=0.0.0.0
-CORS_ORIGINS=https://crawal.jinwoostream.lol,http://localhost:5001
+CORS_ORIGINS=https://crawl.jinwoostream.lol,http://localhost:5001
 
 MONGODB_URI=mongodb://localhost:27017/
 MONGODB_DB_NAME=jinwoo-crawl
@@ -88,7 +88,7 @@ META_ACCESS_TOKEN=`;
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Frontend Route (React .tsx)</span>
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-emerald-400" />
-                <span className="font-mono text-sm font-bold text-white">crawal.jinwoostream.lol</span>
+                <span className="font-mono text-sm font-bold text-white">crawl.jinwoostream.lol</span>
               </div>
               <div className="text-[11px] text-slate-400">
                 Service: <code className="text-emerald-400 font-mono">http://localhost:5001</code>

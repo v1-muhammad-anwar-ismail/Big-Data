@@ -13,7 +13,7 @@ def health_check():
         "backend_port": settings.PORT,
         "frontend_port": 5001,
         "backend_domain": "scrape.jinwoostream.lol",
-        "frontend_domain": "crawal.jinwoostream.lol",
+        "frontend_domain": "crawl.jinwoostream.lol",
         "cors_origins": settings.CORS_ORIGINS,
         "database": db_status
     }

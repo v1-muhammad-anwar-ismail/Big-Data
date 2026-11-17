@@ -2,7 +2,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 
-# Safe import from facebook_page_scraper (singular)
+# Safe import from facebook_page_scraper
 try:
     from facebook_page_scraper import FacebookPageScraper
 except ImportError:
@@ -15,21 +15,18 @@ def scrape_facebook_pages(page_name: str = "detikcom", keyword: str = "karhutla"
     # Try using FacebookPageScraper if available
     if FacebookPageScraper is not None:
         try:
-            # Using low post count for fast response
-            scraper = FacebookPageScraper(page_name=page_name, posts_count=min(max_posts, 5), browser="firefox", proxy=None)
-            json_data = scraper.scrap_to_json()
+            # Gunakan class method PagePostInfo sesuai signature library
+            posts = FacebookPageScraper.PagePostInfo(url=page_name, proxy=None)
             
-            if json_data:
-                import json
-                posts = json.loads(json_data)
-                for post in posts:
-                    content = post.get("text", "") or post.get("content", "")
+            if posts and isinstance(posts, list):
+                for post in posts[:max_posts]:
+                    content = post.get("text", "") or post.get("content", "") or ""
                     post_id = post.get("post_id", "") or hashlib.md5(content.encode()).hexdigest()[:12]
                     post_url = post.get("post_url", f"https://www.facebook.com/{page_name}/posts/{post_id}")
                     likes = int(post.get("likes", 0) or 0)
                     shares = int(post.get("shares", 0) or 0)
                     comments = int(post.get("comments", 0) or 0)
-                    time_str = post.get("time", "")
+                    time_str = post.get("time", "") or datetime.now(timezone.utc).isoformat()
                     
                     doc_id = hashlib.md5(f"fb_{page_name}_{post_id}".encode()).hexdigest()
                     cat = "Disaster" if any(k in content.lower() for k in ["hutan", "karhutla", "banjir"]) else "General"
@@ -44,7 +41,7 @@ def scrape_facebook_pages(page_name: str = "detikcom", keyword: str = "karhutla"
                         "content": content,
                         "url": post_url,
                         "author_or_source": f"Facebook Page: {page_name}",
-                        "published_at": time_str or datetime.now(timezone.utc).isoformat(),
+                        "published_at": time_str,
                         "published_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                         "metrics": {
                             "views": likes * 15,

@@ -21,7 +21,7 @@ class Settings:
     # CORS
     raw_cors: str = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:5001,http://127.0.0.1:5001,https://crawal.jinwoostream.lol"
+        "http://localhost:5001,http://127.0.0.1:5001,https://crawl.jinwoostream.lol"
     )
     CORS_ORIGINS: list[str] = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
 
